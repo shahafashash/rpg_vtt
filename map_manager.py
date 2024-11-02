@@ -7,7 +7,9 @@ from pygame.math import Vector2
 
 from common import MapInteractiveState, GridType
 from drawing_utils import draw_grid_hex, draw_grid_square
-from token_manager import Token, TokenCollection
+from token_collection import TokenCollection
+
+from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL
 
 
 class Grid:
@@ -37,7 +39,6 @@ class MapManager:
 
         self.grid = Grid()
         self.token_collection = TokenCollection()
-        self.last_event = None
 
     def set_map_image(self, path: str) -> None:
         self.map_surf_initial = pygame.image.load(path)
@@ -47,6 +48,9 @@ class MapManager:
         members = list(MapInteractiveState)
         next_index = (members.index(self.state) + 1) % len(members)
         self.state = members[next_index]
+    
+    def set_state(self, state: MapInteractiveState):
+        self.state = state
 
     def update_map(self) -> None:
         self.map_surf = pygame.transform.smoothscale_by(
@@ -67,12 +71,18 @@ class MapManager:
                 self.state = MapInteractiveState.EDIT_MAP
 
     def handle_event(self, event) -> None:
-        self.last_event = event
         if self.state == MapInteractiveState.NONE:
             return
 
+        if event.type == pygame.MOUSEMOTION:
+            # check if there is a selected token and if there is, set the state to token edit
+            is_selected_token = self.token_collection.check_for_selected_token(Vector2(event.pos))
+            if is_selected_token:
+                self.state = MapInteractiveState.EDIT_TOKENS
+
         self.switch_interactive_state()
 
+        # todo: similar code for edit map and edit grid
         if self.state == MapInteractiveState.EDIT_MAP:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button in (4, 5):
@@ -95,6 +105,14 @@ class MapManager:
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
                     self.is_dragging = False
+            
+            if event.type == pygame.MOUSEMOTION:
+                if self.is_dragging:
+                    mouse_pos = Vector2(event.pos)
+                    old_pos = self.pos
+                    self.pos = mouse_pos + self.mouse_to_map
+                    pos_vector = self.pos - old_pos
+                    self.token_collection.translate(pos_vector)
 
         if self.state == MapInteractiveState.EDIT_GRID:
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -113,24 +131,16 @@ class MapManager:
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
                     self.is_dragging = False
+            
+            if event.type == pygame.MOUSEMOTION:
+                if self.is_dragging:
+                    mouse_pos = Vector2(event.pos)
+                    self.grid.pos = mouse_pos + self.mouse_to_map
 
         if self.state == MapInteractiveState.EDIT_TOKENS:
             self.token_collection.handle_event(event)
 
     def step(self) -> None:
-        if self.state == MapInteractiveState.EDIT_MAP:
-            if self.is_dragging:
-                mouse_pos = Vector2(self.last_event.pos)
-                old_pos = self.pos
-                self.pos = mouse_pos + self.mouse_to_map
-                pos_vector = self.pos - old_pos
-                self.token_collection.translate(pos_vector)
-
-        if self.state == MapInteractiveState.EDIT_GRID:
-            if self.is_dragging:
-                mouse_pos = Vector2(self.last_event.pos)
-                self.grid.pos = mouse_pos + self.mouse_to_map
-
         self.token_collection.step()
 
     def draw(self, win: pygame.Surface) -> None:
@@ -139,6 +149,35 @@ class MapManager:
             self.grid.draw(win, self.pos)
             self.token_collection.draw(win)
 
+def handel_gui_events(gui: Gui, map_manager: MapManager):
+    # todo: this should be simplified
+
+    event, _ = gui.listen()
+    if event == 'map_tool':
+        map_manager.set_state(MapInteractiveState.EDIT_MAP)
+        gui.get_element_by_key('grid_tool').set_value(False)
+        gui.get_element_by_key('token_tool').set_value(False)
+    
+    elif event == 'grid_tool':
+        map_manager.set_state(MapInteractiveState.EDIT_GRID)
+        gui.get_element_by_key('map_tool').set_value(False)
+        gui.get_element_by_key('token_tool').set_value(False)
+
+    elif event == 'token_tool':
+        map_manager.set_state(MapInteractiveState.EDIT_TOKENS)
+        gui.get_element_by_key('map_tool').set_value(False)
+        gui.get_element_by_key('grid_tool').set_value(False)
+    
+    elif map_manager.state == MapInteractiveState.EDIT_MAP:
+        gui.get_element_by_key('map_tool').set_value(True)
+        gui.get_element_by_key('grid_tool').set_value(False)
+        gui.get_element_by_key('token_tool').set_value(False)
+    
+    elif map_manager.state == MapInteractiveState.EDIT_TOKENS:
+        gui.get_element_by_key('map_tool').set_value(False)
+        gui.get_element_by_key('grid_tool').set_value(False)
+        gui.get_element_by_key('token_tool').set_value(True)
+    
 
 if __name__ == "__main__":
     pygame.init()
@@ -150,8 +189,21 @@ if __name__ == "__main__":
     win = pygame.display.set_mode((width, height))
 
     map_manager = MapManager()
-    maps = os.listdir(r"./yuvalPdf/pics")
-    map_manager.set_map_image(os.path.join(r"./yuvalPdf/pics", choice(maps)))
+    maps = os.listdir(r"./assets/yuvalPdf/pics")
+    map_manager.set_map_image(os.path.join(r"./assets/yuvalPdf/pics", choice(maps)))
+
+    # create menu
+    icons_path = r'assets/icons.png'
+    icons_surf = pygame.image.load(icons_path).convert_alpha()
+    icons = [pygame.Surface((64, 64), pygame.SRCALPHA) for i in range(3)]
+    [icon.blit(icons_surf, (0, 0), (i * 64, 0, 64, 64)) for i, icon in enumerate(icons)]
+
+    gui = Gui()
+    tool_bar_menu = StackPanel(orientation=HORIZONTAL, size=Vector2(64 * 3, 64), pos=Vector2(width // 2 - (3 * 64) // 2, height - 64))
+    tool_bar_menu.insert(ImageToggle(key='map_tool', value=True, surf=icons[0], generate_event=True))
+    tool_bar_menu.insert(ImageToggle(key='grid_tool', surf=icons[1], generate_event=True))
+    tool_bar_menu.insert(ImageToggle(key='token_tool', surf=icons[2], generate_event=True))
+    gui.insert(tool_bar_menu)
 
     done = False
     while not done:
@@ -166,15 +218,20 @@ if __name__ == "__main__":
 
             if event.type == pygame.DROPFILE:
                 file = event.file
-                map_manager.add_token(file, Vector2(event.pos))
+                map_manager.add_token(file, pygame.mouse.get_pos())
 
+            gui.handle_pygame_event(event)
             map_manager.handle_event(event)
 
         # step
         map_manager.step()
+        gui.step()
+        handel_gui_events(gui, map_manager)
+        
 
         # draw
         map_manager.draw(win)
+        gui.draw(win)
 
         pygame.display.flip()
         fpsClock.tick(fps)
