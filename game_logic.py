@@ -1,13 +1,17 @@
+from typing import Tuple
 import multiprocess as mp
 from threading import Thread
 import math
 import time
+import os
 import pygame as pg
 from pygame.event import Event as PyGameEvent
+from screeninfo import get_monitors
 from event_queue import PublisherEventQueue, SubscriberEventQueue, EventQueue
 from publisher import Publisher
 from subscriber import Subscriber
 from models import Message
+from settings import SettingsManager, GameSettings
 import custom_events as CustomPyGameEvents
 
 
@@ -24,15 +28,30 @@ class GameLogic(mp.Process):
         self._win: pg.Surface = None
         self._clock: pg.time.Clock = None
 
+        self._settings: GameSettings = None
         self._map_manager: MapManager = None
 
-    def _initialize(self) -> None:
-        pg.init()
-        pg.display.set_caption(self._name)
-        self._win = pg.display.set_mode((600, 300))
-        self._clock = pg.time.Clock()
+    def _initialize_window(self, title: str) -> pg.Surface:
+        resolution_settings = self._settings.resolution
 
+        if resolution_settings.fullscreen:
+            window = pg.display.set_mode((0, 0), pg.FULLSCREEN, 0, 0)
+        else:
+            window_size = (resolution_settings.width, resolution_settings.height)
+            window = pg.display.set_mode(window_size, pg.RESIZABLE, 0, 0)
+
+        pg.display.set_caption(title)
+        return window
+
+    def _initialize(self) -> None:
+
+        settings_manager = SettingsManager()
+        self._settings: GameSettings = settings_manager.settings
+        self._clock = pg.time.Clock()
         self._map_manager = MapManager()
+        self._win = self._initialize_window(self._name)
+        pg.init()
+
 
     def _finalize(self) -> None:
         pg.quit()
@@ -118,6 +137,15 @@ class SubscriberGameLogic(GameLogic):
         self._subscriber_thread: Thread = Thread(target=self._subscriber.start)
 
     def _initialize(self) -> None:
+        monitors = get_monitors()
+        if len(monitors) > 1:
+            monitor = monitors[1]
+            position = (monitor.x, monitor.y)
+        else:
+            position = (0, 0)
+
+        os.environ['SDL_VIDEO_WINDOW_POS'] = f'{position[0]},{position[1]}'
+
         super()._initialize()
         self._subscriber_thread.start()
 

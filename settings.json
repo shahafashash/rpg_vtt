@@ -1,0 +1,16 @@
+{
+    "resolution": {
+        "width": 1280,
+        "height": 720,
+        "fullscreen": false
+    },
+    "keyboard": {
+        "keybindings": {}
+    },
+    "sound": {
+        "master_volume": 1.0,
+        "music_volume": 1.0,
+        "sfx_volume": 1.0,
+        "mute": false
+    }
+}
