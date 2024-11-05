@@ -37,13 +37,25 @@ class Grid(MapEntity):
         self.initial_size = 50.0
         self.size = self.initial_size
 
+        self.selectable = True
+        self.draggable = True
+        self.scaleable = True
+
     def update_canvas_scale(self, canvas) -> None:
         super().update_canvas_scale(canvas)
-        self.size = self.initial_size * canvas.scale
+        self.size = self.initial_size * self.canvas.scale * self.scale
+    
+    def update_scale(self):
+        super().update_scale()
+        self.size = self.initial_size * self.canvas.scale * self.scale
+
+    def check_if_selected(self, mouse_pos: Vector2) -> None:
+        self.selected = True
 
     def draw(self, win: pygame.Surface) -> None:
+        pos = self.canvas.cam + self.pos * self.canvas.scale
         if self.grid_type == GridType.SQUARE:
-            draw_grid_square(win, self.canvas.cam + self.pos, self.size)
+            draw_grid_square(win, pos, self.size)
 
 
 class Token(MapEntity):
@@ -55,6 +67,8 @@ class Token(MapEntity):
         self.surf: pygame.Surface = self.surf_initial
 
         self.selectable = True
+        self.scaleable = True
+        self.draggable = True
     
     def update_canvas_scale(self, canvas) -> None:
         super().update_canvas_scale(canvas)
@@ -67,7 +81,7 @@ class Token(MapEntity):
     def check_if_selected(self, mouse_pos: Vector2) -> None:
         self.selected = False
         pos = self.canvas.cam + self.pos * self.canvas.scale
-        if pos.distance_to(mouse_pos) < self.surf.get_size()[0]:
+        if pos.distance_to(mouse_pos) < self.surf.get_size()[0] / 2:
             self.selected = True
 
     def draw(self, win: pygame.Surface) -> None:
@@ -121,10 +135,7 @@ if __name__ == "__main__":
     grid = Grid(canvas)
     canvas.register_map_entity(grid)
 
-    token = Token(canvas, Vector2(100, 100), r'C:\Users\simel\OneDrive\Desktop\DnD\tokens\remi.png')
-    canvas.register_map_entity(token)
-    token.scale = 0.4
-    token.update_scale()
+    tokens: List[Token] = []
 
     # create menu
     icons_path = r'assets/icons.png'
@@ -153,21 +164,25 @@ if __name__ == "__main__":
 
             if event.type == pygame.DROPFILE:
                 file = event.file
+                pos = canvas.mouse_in_world(pygame.mouse.get_pos())
+
+                new_token = Token(canvas, pos, file)
+                canvas.register_map_entity(new_token)
+                tokens.append(new_token)
 
                 # map_manager.add_token(file, pygame.mouse.get_pos())
 
             if state == MapInteractiveState.EDIT_WORLD:
                 canvas.handle_event(event)
             elif state == MapInteractiveState.EDIT_TOKENS:
-                token.handle_event(event)
+                for token in tokens:
+                    token.handle_event(event)
             elif state == MapInteractiveState.EDIT_GRID:
                 grid.handle_event(event)
             
             gui.handle_pygame_event(event)
-            # map_manager.handle_event(event)
 
         # step
-        # map_manager.step()
         gui.step()
         state = handel_gui_events(gui, state)
         
@@ -175,7 +190,8 @@ if __name__ == "__main__":
         # draw
         map.draw(win)
         grid.draw(win)
-        token.draw(win)
+        for token in tokens:
+            token.draw(win)
 
         gui.draw(win)
 

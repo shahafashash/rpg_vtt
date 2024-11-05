@@ -21,29 +21,32 @@ class MapEntity:
     
     def handle_event(self, event):
         if self.selected:
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button in (4, 5):
-                    scale_value = 1.1 if event.button == 4 else 0.9
-                    self.scale *= scale_value
-                    self.update_scale()
-
-                if event.button == 1:
+            # drag
+            if self.draggable:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     self.is_dragging = True
                     mouse_in_world = (Vector2(event.pos) - self.canvas.cam) / self.canvas.scale
                     self.mouse_world_to_self = self.pos - mouse_in_world
-            
-            if event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 1:
+                
+                if event.type == pygame.MOUSEBUTTONUP and self.draggable and event.button == 1:
                     self.is_dragging = False
+            
+                if event.type == pygame.MOUSEMOTION and self.draggable:
+                    if self.is_dragging:
+                        mouse_in_world = (Vector2(event.pos) - self.canvas.cam) / self.canvas.scale
+                        self.pos = mouse_in_world + self.mouse_world_to_self
+            
+            # scale
+            if self.scaleable:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button in (4, 5):
+                    scale_value = 1.1 if event.button == 4 else 0.9
+                    self.scale *= scale_value
+                    self.update_scale()
         
-            if event.type == pygame.MOUSEMOTION:
-                if self.is_dragging:
-                    mouse_in_world = (Vector2(event.pos) - self.canvas.cam) / self.canvas.scale
-                    self.pos = mouse_in_world + self.mouse_world_to_self
-        
+        # check for selection
         if event.type == pygame.MOUSEMOTION:
             if self.selectable:
-                    self.check_if_selected(event.pos)
+                self.check_if_selected(event.pos)
 
     def check_if_selected(self, mouse_pos: Vector2) -> None:
         ...
@@ -61,8 +64,8 @@ class Canvas:
         self.cam = Vector2()
         self.scale = 1.0
 
-        self.is_dragging = False
-        self.mouse_to_cam: Vector2 = None
+        self._is_dragging = False
+        self._mouse_to_cam: Vector2 = None
         self.entities: List[MapEntity] = []
     
     def register_map_entity(self, entity: MapEntity) -> None:
@@ -81,18 +84,18 @@ class Canvas:
                     entity.update_canvas_scale(self)
 
             if event.button == 1:
-                self.is_dragging = True
-                self.mouse_to_cam = self.cam - Vector2(event.pos)
+                self._is_dragging = True
+                self._mouse_to_cam = self.cam - Vector2(event.pos)
         
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
-                self.is_dragging = False
+                self._is_dragging = False
         
         if event.type == pygame.MOUSEMOTION:
-            if self.is_dragging:
+            if self._is_dragging:
                 mouse_pos = Vector2(event.pos)
-                self.cam = mouse_pos + self.mouse_to_cam
+                self.cam = mouse_pos + self._mouse_to_cam
         
-    def mouse_in_world(self, mouse: Vector2) -> Vector2:
-        pos = (mouse - self.cam) / self.scale
-        return pos
+    def mouse_in_world(self, mouse_in_win: Vector2) -> Vector2:
+        mouse_in_world = (Vector2(mouse_in_win) - self.cam) / self.scale
+        return mouse_in_world
