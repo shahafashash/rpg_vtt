@@ -7,7 +7,8 @@ from pygame.math import Vector2
 
 from common import MapInteractiveState, GridType
 from drawing_utils import draw_grid_hex, draw_grid_square
-from token_collection import TokenCollection
+# from token_collection import TokenCollection, Token
+from canvas import Canvas, IMapEntity
 
 from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL
 
@@ -26,14 +27,19 @@ class Grid:
         self.size *= value
 
 
-class MapManager:
-    def __init__(self):
+
+
+
+
+class MapManager(IMapEntity):
+    def __init__(self, canvas: Canvas):
+        self.canvas: Canvas = canvas
         self.map_surf_initial: pygame.Surface = None
         self.map_surf: pygame.Surface = None
-        self.pos: Vector2 = Vector2(0, 0)
-        self.scale: float = 1.0
+        # self.pos: Vector2 = Vector2(0, 0)
+        # self.scale: float = 1.0
 
-        self.state = MapInteractiveState.EDIT_MAP
+        self.state = MapInteractiveState.EDIT_WORLD
         self.is_dragging = False
         self.mouse_to_map: Vector2 = Vector2(0, 0)
 
@@ -54,7 +60,7 @@ class MapManager:
 
     def update_map(self) -> None:
         self.map_surf = pygame.transform.smoothscale_by(
-            self.map_surf_initial, self.scale
+            self.map_surf_initial, self.canvas.scale
         )
 
     def add_token(self, file: str, pos: List[int]) -> None:
@@ -62,13 +68,13 @@ class MapManager:
         self.token_collection.add_token(file, pos)
 
     def switch_interactive_state(self) -> None:
-        if self.state == MapInteractiveState.EDIT_MAP:
+        if self.state == MapInteractiveState.EDIT_WORLD:
             if self.token_collection.is_token_selected():
                 self.state = MapInteractiveState.EDIT_TOKENS
 
         elif self.state == MapInteractiveState.EDIT_TOKENS:
             if not self.token_collection.is_token_selected():
-                self.state = MapInteractiveState.EDIT_MAP
+                self.state = MapInteractiveState.EDIT_WORLD
 
     def handle_event(self, event) -> None:
         if self.state == MapInteractiveState.NONE:
@@ -83,24 +89,26 @@ class MapManager:
         self.switch_interactive_state()
 
         # todo: similar code for edit map and edit grid
-        if self.state == MapInteractiveState.EDIT_MAP:
+        if self.state == MapInteractiveState.EDIT_WORLD:
+            self.canvas.handle_event(event)
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button in (4, 5):
-                    scale_value = 1.1 if event.button == 4 else 0.9
-                    mouse_pos = Vector2(event.pos)
-                    mouse_to_map = (self.pos - mouse_pos) * scale_value
+                pass
+                # if event.button in (4, 5):
+                #     scale_value = 1.1 if event.button == 4 else 0.9
+                #     mouse_pos = Vector2(event.pos)
+                #     mouse_to_map = (self.pos - mouse_pos) * scale_value
 
-                    self.pos = mouse_pos + mouse_to_map
-                    self.token_collection.scale_from(scale_value, mouse_pos)
+                #     self.pos = mouse_pos + mouse_to_map
+                #     self.token_collection.scale_from(scale_value, mouse_pos)
 
-                    self.scale *= scale_value
-                    self.grid.scale(scale_value)
+                #     self.scale *= scale_value
+                #     self.grid.scale(scale_value)
 
-                    self.update_map()
+                #     self.update_map()
 
-                if event.button == 1:
-                    self.is_dragging = True
-                    self.mouse_to_map = self.pos - Vector2(event.pos)
+                # if event.button == 1:
+                #     self.is_dragging = True
+                #     self.mouse_to_map = self.pos - Vector2(event.pos)
 
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
@@ -141,20 +149,21 @@ class MapManager:
             self.token_collection.handle_event(event)
 
     def step(self) -> None:
-        self.token_collection.step()
+        # self.token_collection.step()
+        pass
 
-    def draw(self, win: pygame.Surface) -> None:
+    def draw(self, canvas: Canvas) -> None:
         if self.map_surf:
-            win.blit(self.map_surf, self.pos)
-            self.grid.draw(win, self.pos)
-            self.token_collection.draw(win)
+            canvas.win.blit(self.map_surf, self.canvas.cam)
+            # self.grid.draw(canvas.win, self.pos)
+            # self.token_collection.draw(canvas.win)
 
 def handel_gui_events(gui: Gui, map_manager: MapManager):
     # todo: this should be simplified
 
     event, _ = gui.listen()
     if event == 'map_tool':
-        map_manager.set_state(MapInteractiveState.EDIT_MAP)
+        map_manager.set_state(MapInteractiveState.EDIT_WORLD)
         gui.get_element_by_key('grid_tool').set_value(False)
         gui.get_element_by_key('token_tool').set_value(False)
     
@@ -168,7 +177,7 @@ def handel_gui_events(gui: Gui, map_manager: MapManager):
         gui.get_element_by_key('map_tool').set_value(False)
         gui.get_element_by_key('grid_tool').set_value(False)
     
-    elif map_manager.state == MapInteractiveState.EDIT_MAP:
+    elif map_manager.state == MapInteractiveState.EDIT_WORLD:
         gui.get_element_by_key('map_tool').set_value(True)
         gui.get_element_by_key('grid_tool').set_value(False)
         gui.get_element_by_key('token_tool').set_value(False)
@@ -188,7 +197,9 @@ if __name__ == "__main__":
     width, height = 1280, 720
     win = pygame.display.set_mode((width, height))
 
-    map_manager = MapManager()
+    canvas = Canvas(win)
+
+    map_manager = MapManager(canvas)
     maps = os.listdir(r"./assets/yuvalPdf/pics")
     map_manager.set_map_image(os.path.join(r"./assets/yuvalPdf/pics", choice(maps)))
 
@@ -230,7 +241,7 @@ if __name__ == "__main__":
         
 
         # draw
-        map_manager.draw(win)
+        map_manager.draw(canvas)
         gui.draw(win)
 
         pygame.display.flip()
