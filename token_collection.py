@@ -47,8 +47,6 @@ class TokenCollection:
         self.token_dragged = False
         self.drag_offset = Vector2()
 
-        self.last_event = None
-
     def is_token_selected(self) -> bool:
         return self.selected_token is not None
 
@@ -57,8 +55,17 @@ class TokenCollection:
         token.set_image(file)
         self.tokens.append(token)
 
+    def check_for_selected_token(self, pos: Vector2) -> bool:
+        if self.token_dragged:
+            return True
+        self.selected_token = None
+        for token in self.tokens:
+            if token.pos.distance_to(pos) < token.surf.get_width() / 2:
+                self.selected_token = token
+                break
+        return self.selected_token is not None
+
     def handle_event(self, event) -> None:
-        self.last_event = event
         if self.selected_token is None:
             return
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -75,11 +82,10 @@ class TokenCollection:
                 self.token_dragged = False
 
         elif event.type == pygame.MOUSEMOTION:
-            self.selected_token = None
-            for token in self.tokens:
-                if token.pos.distance_to(event.pos) < token.surf.get_width() / 2:
-                    self.selected_token = token
-                    break
+
+            if self.token_dragged:
+                mouse_pos = Vector2(event.pos)
+                self.selected_token.pos = mouse_pos + self.drag_offset
 
     def translate(self, vec: Vector2) -> None:
         for token in self.tokens:
@@ -94,22 +100,8 @@ class TokenCollection:
             token.scale_from(value, anchor)
 
     def step(self):
-        check_for_selection = True
-        if self.token_dragged:
-            check_for_selection = False
+        pass
 
-            mouse_pos = Vector2(self.last_event.pos)
-            self.selected_token.pos = mouse_pos + self.drag_offset
-
-        # if check_for_selection:
-        #     self.selected_token = None
-        #     for token in self.tokens:
-        #         if (
-        #             token.pos.distance_to(self.last_event.pos)
-        #             < token.surf.get_width() / 2
-        #         ):
-        #             self.selected_token = token
-        #             break
 
     def draw(self, win: pygame.Surface) -> None:
         for token in self.tokens:
