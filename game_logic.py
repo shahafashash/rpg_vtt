@@ -84,6 +84,9 @@ class GameLogic(mp.Process):
             self._handle_message(message)
             self._post_message_handle_hook(message)
 
+    def draw(self) -> None:
+        self._map.draw(self._win)
+
     def run(self) -> None:
         self._initialize()
         while not self._stop_event.is_set():
@@ -91,7 +94,7 @@ class GameLogic(mp.Process):
             self._handle_messages(messages)
 
             self._win.fill((0,0,0))
-            self._map.draw(self._win)
+            self.draw()
 
             pg.display.update()
             self._clock.tick(60)
@@ -129,6 +132,11 @@ class PublisherGameLogic(GameLogic):
         if message.event.type == pg.QUIT:
             time.sleep(0.1)
 
+    def draw(self) -> None:
+        # Add GUI here
+        # ...
+
+        super().draw()
 
 class SubscriberGameLogic(GameLogic):
     def __init__(self) -> None:
