@@ -25,8 +25,10 @@ class Map(MapEntity):
     def update_canvas_scale(self, canvas) -> None:
         super().update_canvas_scale(canvas)
         self.surf = pygame.transform.smoothscale_by(self.surf_initial, canvas.scale)
-    
+
     def draw(self, win: pygame.Surface) -> None:
+        if self.surf is None:
+            return
         win.blit(self.surf, self.canvas.cam)
 
 
@@ -44,7 +46,7 @@ class Grid(MapEntity):
     def update_canvas_scale(self, canvas) -> None:
         super().update_canvas_scale(canvas)
         self.size = self.initial_size * self.canvas.scale * self.scale
-    
+
     def update_scale(self):
         super().update_scale()
         self.size = self.initial_size * self.canvas.scale * self.scale
@@ -62,18 +64,18 @@ class Token(MapEntity):
     def __init__(self, canvas: Canvas, pos: Vector2, image_path: str):
         super().__init__(canvas)
         self.pos = pos
-        
+
         self.surf_initial: pygame.Surface = pygame.image.load(image_path)
         self.surf: pygame.Surface = self.surf_initial
 
         self.selectable = True
         self.scaleable = True
         self.draggable = True
-    
+
     def update_canvas_scale(self, canvas) -> None:
         super().update_canvas_scale(canvas)
         self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * canvas.scale)
-    
+
     def update_scale(self) -> None:
         super().update_scale()
         self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * canvas.scale)
@@ -101,7 +103,7 @@ def handel_gui_events(gui: Gui, state: MapInteractiveState) -> MapInteractiveSta
         output = MapInteractiveState.EDIT_WORLD
         gui.get_element_by_key('grid_tool').set_value(False)
         gui.get_element_by_key('token_tool').set_value(False)
-    
+
     elif event == 'grid_tool':
         output = MapInteractiveState.EDIT_GRID
         gui.get_element_by_key('map_tool').set_value(False)
@@ -111,9 +113,9 @@ def handel_gui_events(gui: Gui, state: MapInteractiveState) -> MapInteractiveSta
         output = MapInteractiveState.EDIT_TOKENS
         gui.get_element_by_key('map_tool').set_value(False)
         gui.get_element_by_key('grid_tool').set_value(False)
-    
+
     return output
-    
+
 
 if __name__ == "__main__":
     pygame.init()
@@ -179,13 +181,13 @@ if __name__ == "__main__":
                     token.handle_event(event)
             elif state == MapInteractiveState.EDIT_GRID:
                 grid.handle_event(event)
-            
+
             gui.handle_pygame_event(event)
 
         # step
         gui.step()
         state = handel_gui_events(gui, state)
-        
+
 
         # draw
         map.draw(win)

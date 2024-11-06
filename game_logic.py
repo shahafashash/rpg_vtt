@@ -14,8 +14,9 @@ from models import Message
 from settings import SettingsManager, GameSettings
 import custom_events as CustomPyGameEvents
 
-
-from map_manager import MapManager
+from canvas import Canvas
+from map_entities import Map, Token, Grid
+from menu_gui import Gui
 
 
 class GameLogic(mp.Process):
@@ -29,7 +30,8 @@ class GameLogic(mp.Process):
         self._clock: pg.time.Clock = None
 
         self._settings: GameSettings = None
-        self._map_manager: MapManager = None
+        self._canvas: Canvas = None
+        self._map: Map = None
 
     def _initialize_window(self, title: str) -> pg.Surface:
         resolution_settings = self._settings.resolution
@@ -44,11 +46,11 @@ class GameLogic(mp.Process):
         return window
 
     def _initialize(self) -> None:
-
         settings_manager = SettingsManager()
         self._settings: GameSettings = settings_manager.settings
         self._clock = pg.time.Clock()
-        self._map_manager = MapManager()
+        self._canvas = Canvas()
+        self._map = Map(self._canvas)
         self._win = self._initialize_window(self._name)
         pg.init()
 
@@ -69,13 +71,12 @@ class GameLogic(mp.Process):
         if event.type == pg.QUIT:
             self._stop_event.set()
         elif event.type == CustomPyGameEvents.CHANGE_MAP_SPECIFIC:
-            self._map_manager.set_map_image(f'maps/{extra["map"]}')
-        elif event.type == CustomPyGameEvents.MAP_CYCLE_STATE:
-            self._map_manager.cycle_state()
-        elif event.type == CustomPyGameEvents.ADD_TOKEN:
-            self._map_manager.add_token(extra["file"], extra["pos"])
+            self._map.set_map_image(f'assets/maps/{extra["map"]}')
+        # elif event.type == CustomPyGameEvents.ADD_TOKEN:
+        #     self._map_manager.add_token(extra["file"], extra["pos"])
 
-        self._map_manager.handle_event(event)
+        self._map.handle_event(message)
+        self._canvas.handle_event(message)
 
     def _handle_messages(self, messages: list[Message]) -> None:
         for message in messages:
@@ -89,8 +90,8 @@ class GameLogic(mp.Process):
             messages = self._message_queue.get()
             self._handle_messages(messages)
 
-            self._map_manager.step()
-            self._map_manager.draw(self._win)
+            self._win.fill((0,0,0))
+            self._map.draw(self._win)
 
             pg.display.update()
             self._clock.tick(60)
@@ -114,7 +115,7 @@ class PublisherGameLogic(GameLogic):
         event = PyGameEvent(CustomPyGameEvents.CHANGE_MAP_SPECIFIC)
         extra = {"map": "image_31.jfif"}
         self._publisher.publish(event, extra)
-        self._map_manager.set_map_image(f'maps/{extra["map"]}')
+        self._map.set_map_image(f'assets/maps/{extra["map"]}')
 
     def _finalize(self) -> None:
         self._publisher.stop()
