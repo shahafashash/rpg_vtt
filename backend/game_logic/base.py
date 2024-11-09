@@ -1,22 +1,12 @@
-from typing import Tuple
 import multiprocess as mp
-from threading import Thread
-import math
-import time
-import os
 import pygame as pg
-from pygame.event import Event as PyGameEvent
-from screeninfo import get_monitors
-from event_queue import PublisherEventQueue, SubscriberEventQueue, EventQueue
-from publisher import Publisher
-from subscriber import Subscriber
-from models import Message
-from settings import SettingsManager, GameSettings
-import custom_events as CustomPyGameEvents
+from backend.event_queues import EventQueue
+from backend.models import Message
+from backend.settings.settings import SettingsManager, GameSettings
+import backend.custom_events as CustomPyGameEvents
 
 from canvas import Canvas
-from map_entities import Map, Token, Grid
-from menu_gui import Gui
+from map_entities import Map
 
 
 class GameLogic(mp.Process):
@@ -100,66 +90,3 @@ class GameLogic(mp.Process):
             self._clock.tick(60)
 
         self._finalize()
-
-
-class PublisherGameLogic(GameLogic):
-    def __init__(self) -> None:
-        super().__init__("DM Screen", PublisherEventQueue())
-        self._publisher: Publisher = Publisher()
-        self._publisher_thread: Thread = Thread(
-            target=self._publisher.start, daemon=True
-        )
-
-    def _initialize(self) -> None:
-        super()._initialize()
-        self._publisher_thread.start()
-
-        # DEMO
-        event = PyGameEvent(CustomPyGameEvents.CHANGE_MAP_SPECIFIC)
-        extra = {"map": "image_31.jfif"}
-        self._publisher.publish(event, extra)
-        self._map.set_map_image(f'assets/maps/{extra["map"]}')
-
-    def _finalize(self) -> None:
-        self._publisher.stop()
-        self._publisher_thread.join()
-        super()._finalize()
-
-    def _pre_message_handle_hook(self, message):
-        # if message.event.type == CustomPyGameEvents.CIRCLE_INTERACT:
-        #     self._publisher.publish(message.event)
-        self._publisher.publish(message.event, message.extra)
-        if message.event.type == pg.QUIT:
-            time.sleep(0.1)
-
-    def draw(self) -> None:
-        # Add GUI here
-        # ...
-
-        super().draw()
-
-class SubscriberGameLogic(GameLogic):
-    def __init__(self) -> None:
-        subscriber = Subscriber()
-        super().__init__("Players Screen", SubscriberEventQueue(subscriber))
-        self._subscriber: Subscriber = subscriber
-        self._subscriber_thread: Thread = Thread(target=self._subscriber.start)
-
-    def _initialize(self) -> None:
-        monitors = get_monitors()
-        if len(monitors) > 1:
-            monitor = monitors[1]
-            position = (monitor.x, monitor.y)
-        else:
-            position = (0, 0)
-
-        os.environ['SDL_VIDEO_WINDOW_POS'] = f'{position[0]},{position[1]}'
-
-        super()._initialize()
-        self._subscriber_thread.start()
-
-    def _finalize(self) -> None:
-        self._subscriber.stop()
-        self._subscriber_thread.join()
-
-        super()._finalize()

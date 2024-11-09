@@ -12,5 +12,10 @@
         "music_volume": 1.0,
         "sfx_volume": 1.0,
         "mute": false
+    },
+    "assets": {
+        "maps": "assets/maps",
+        "tokens": "assets/tokens",
+        "sound_effects": "assets/sound_effects"
     }
 }

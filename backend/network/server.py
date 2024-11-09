@@ -1,10 +1,10 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from broker import MessageBroker
+from backend.network.broker import MessageBroker
 
 
-app = FastAPI()
-app.add_middleware(
+server = FastAPI()
+server.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -15,7 +15,7 @@ app.add_middleware(
 broker = MessageBroker()
 
 
-@app.websocket("/ws/subscriber")
+@server.websocket("/ws/subscriber")
 async def websocket_subscribe(websocket: WebSocket) -> None:
     await websocket.accept()
     await broker.register(websocket)
@@ -28,9 +28,14 @@ async def websocket_subscribe(websocket: WebSocket) -> None:
         await broker.unregister(websocket)
 
 
-@app.websocket("/ws/publisher")
+@server.websocket("/ws/publisher")
 async def websocket_publish(websocket: WebSocket) -> None:
     await websocket.accept()
+
+    try:
+        await broker.assign_publisher(websocket)
+    except Exception as e:
+        return await websocket.send_text(str(e))
 
     try:
         while True:

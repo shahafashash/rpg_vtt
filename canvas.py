@@ -3,8 +3,8 @@ from typing import List
 
 import pygame
 from pygame import Vector2
-import custom_events as CustomPyGameEvents
-from models import Message
+import backend.custom_events as CustomPyGameEvents
+from backend.models import Message
 
 
 class MapEntity:

@@ -3,7 +3,7 @@ import asyncio
 import websockets as ws
 from queue import Queue, Empty as QueueEmpty
 from pygame.event import Event as PyGameEvent
-from models import Message
+from backend.models import Message
 
 
 class Publisher:

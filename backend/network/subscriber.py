@@ -2,7 +2,7 @@ from typing import Optional
 import asyncio
 import websockets as ws
 from queue import Queue, Empty as QueueEmpty
-from models import Message
+from backend.models import Message
 
 
 class Subscriber:
