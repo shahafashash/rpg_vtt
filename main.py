@@ -1,13 +1,13 @@
 import threading
 import uvicorn
-from backend.network.server import app
+from backend.network import server
 
 
 if __name__ == "__main__":
     from backend.game_logic import PublisherGameLogic, SubscriberGameLogic
 
     uvicorn_thread = threading.Thread(
-        target=uvicorn.run, args=(app,), kwargs={"port": 8000}, daemon=True
+        target=uvicorn.run, args=(server,), kwargs={"port": 8000}, daemon=True
     ).start()
 
     # Create two game logic objects
