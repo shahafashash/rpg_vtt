@@ -7,14 +7,82 @@ from pygame.math import Vector2
 
 from common import MapInteractiveState, GridType
 from drawing_utils import draw_grid_hex, draw_grid_square
-from canvas import Canvas, MapEntity
+import backend.custom_events as CustomPyGameEvents
+from backend.models import Message
 
 from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL
+from dataclasses import dataclass
+
+@dataclass
+class Transformation:
+    pos = Vector2()
+    scale = 1.0
+
+
+class MapEntity:
+    def __init__(self):
+        self.pos = Vector2()
+        self.scale = 1.0
+
+        self.draggable = False
+        self.scaleable = False
+        self.selectable = False
+        self.selected = False
+
+        self.is_dragging = False
+        self.mouse_world_to_self = Vector2()
+
+    def handle_event(self, message: Message, transformations: Transformation):
+        event = message.event
+        extra = message.extra
+
+        if self.selected:
+            # drag
+            if self.draggable:
+                if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
+                    self.is_dragging = True
+                    mouse_in_world = (Vector2(extra['pos']) - transformations.pos) / transformations.scale
+                    self.mouse_world_to_self = self.pos - mouse_in_world
+
+                if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_UP:
+                    self.is_dragging = False
+
+                if event.type == pygame.MOUSEMOTION and self.is_dragging:
+                    mouse_in_world = (Vector2(extra['pos']) - transformations.pos) / transformations.scale
+                    self.pos = mouse_in_world + self.mouse_world_to_self
+
+            # scale
+            if self.scaleable:
+                if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
+                    scale_value = 1.1 if event.type == CustomPyGameEvents.WHEEL_PRESS_UP else 0.9
+                    self.scale *= scale_value
+                    self.update_scale()
+
+        # check for selection
+        if event.type == pygame.MOUSEMOTION:
+            if self.selectable:
+                self.check_if_selected(extra['pos'])
+
+    def check_if_selected(self, mouse_pos: Vector2) -> None:
+        ...
+
+    def update_scale(self) -> None:
+        ...
+
+    def on_canvas_scale_update(self, transform: Transformation) -> None:
+        ...
+    
+    def step(self) -> None:
+        ...
+
+    def draw(self, win: pygame.Surface, transform: Transformation) -> None:
+        ...
+
+
 
 
 class Map(MapEntity):
-    def __init__(self, canvas: Canvas):
-        super().__init__(canvas)
+    def __init__(self):
         self.surf_initial: pygame.Surface = None
         self.surf: pygame.Surface = None
 
@@ -22,19 +90,20 @@ class Map(MapEntity):
         self.surf_initial = pygame.image.load(path)
         self.surf = self.surf_initial
 
-    def update_canvas_scale(self, canvas) -> None:
-        super().update_canvas_scale(canvas)
-        self.surf = pygame.transform.smoothscale_by(self.surf_initial, canvas.scale)
+    def on_canvas_scale_update(self, transform: Transformation) -> None:
+        super().on_canvas_scale_update(transform)
+        self.surf = pygame.transform.smoothscale_by(self.surf_initial, transform.scale)
 
-    def draw(self, win: pygame.Surface) -> None:
+    def draw(self, win: pygame.Surface, transform: Transformation) -> None:
         if self.surf is None:
             return
-        win.blit(self.surf, self.canvas.cam)
+        win.blit(self.surf, transform.pos)
+
 
 
 class Grid(MapEntity):
-    def __init__(self, canvas: Canvas):
-        super().__init__(canvas)
+    def __init__(self):
+        super().__init__()
         self.grid_type = GridType.SQUARE
         self.initial_size = 50.0
         self.size = self.initial_size
@@ -43,9 +112,9 @@ class Grid(MapEntity):
         self.draggable = True
         self.scaleable = True
 
-    def update_canvas_scale(self, canvas) -> None:
-        super().update_canvas_scale(canvas)
-        self.size = self.initial_size * self.canvas.scale * self.scale
+    def on_canvas_scale_update(self, transform: Transformation) -> None:
+        super().on_canvas_scale_update(transform)
+        self.size = self.initial_size * transform.scale * self.scale
 
     def update_scale(self):
         super().update_scale()
@@ -60,9 +129,10 @@ class Grid(MapEntity):
             draw_grid_square(win, pos, self.size)
 
 
+
 class Token(MapEntity):
-    def __init__(self, canvas: Canvas, pos: Vector2, image_path: str):
-        super().__init__(canvas)
+    def __init__(self, pos: Vector2, image_path: str):
+        super().__init__()
         self.pos = pos
 
         self.surf_initial: pygame.Surface = pygame.image.load(image_path)
@@ -72,9 +142,9 @@ class Token(MapEntity):
         self.scaleable = True
         self.draggable = True
 
-    def update_canvas_scale(self, canvas) -> None:
-        super().update_canvas_scale(canvas)
-        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * canvas.scale)
+    def on_canvas_scale_update(self, transform) -> None:
+        super().on_canvas_scale_update(transform)
+        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * transform.scale)
 
     def update_scale(self) -> None:
         super().update_scale()

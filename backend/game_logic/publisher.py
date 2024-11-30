@@ -7,6 +7,8 @@ from backend.event_queues import PublisherEventQueue
 from backend.game_logic import GameLogic
 import backend.custom_events as CustomPyGameEvents
 
+from canvas_gui import CanvasGui
+
 class PublisherGameLogic(GameLogic):
     def __init__(self) -> None:
         super().__init__("DM Screen", PublisherEventQueue())
@@ -14,6 +16,9 @@ class PublisherGameLogic(GameLogic):
         self._publisher_thread: Thread = Thread(
             target=self._publisher.start, daemon=True
         )
+
+        self._gui = CanvasGui()
+        
 
     def _initialize(self) -> None:
         super()._initialize()
@@ -23,7 +28,7 @@ class PublisherGameLogic(GameLogic):
         event = PyGameEvent(CustomPyGameEvents.CHANGE_MAP_SPECIFIC)
         extra = {"map": "image_31.jfif"}
         self._publisher.publish(event, extra)
-        self._map.set_map_image(f'assets/maps/{extra["map"]}')
+        self._canvas.set_map_image(f'assets/maps/{extra["map"]}')
 
     def _finalize(self) -> None:
         self._publisher.stop()
@@ -42,3 +47,4 @@ class PublisherGameLogic(GameLogic):
         # ...
 
         super().draw()
+        self._gui.draw(self._win)

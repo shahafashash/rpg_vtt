@@ -7,6 +7,9 @@ from enum import Enum
 import pygame
 from pygame.math import Vector2
 
+from backend.models import Message
+import backend.custom_events as CustomPyGameEvents
+
 FPS = 30
 WIN_WIDTH = 1280
 WIN_HEIGHT = 720
@@ -93,9 +96,9 @@ class Gui:
             values |= menu_values
         return values
 
-    def handle_pygame_event(self, event):
+    def handle_event(self, message: Message) -> None:
         for menu in self.menus:
-            menu.handle_pygame_event(event)
+            menu.handle_event(message)
 
     def insert(self, menu):
         menu.set_gui(self)
@@ -161,7 +164,7 @@ class GuiElement(ABC):
     def set_gui(self, gui: Gui):
         self.gui = gui
     
-    def handle_pygame_event(self, event):
+    def handle_event(self, message: Message) -> None:
         pass
 
     def get_values(self):
@@ -222,7 +225,6 @@ class GuiElement(ABC):
             return self
         return None
 
-
 class StackPanel(GuiElement):
     def __init__(self, pos=None, size=None, name="", orientation=VERTICAL, margin=1, custom_size=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -241,9 +243,15 @@ class StackPanel(GuiElement):
         self.offset = None
         self.gui: Gui = None
     
-    def handle_pygame_event(self, event):
+    def handle_event(self, message: Message) -> None:
         for element in self.elements:
-            element.handle_pygame_event(event)
+            element.handle_event(message)
+
+    def notify_event(self, event) -> None:
+        if self.parent is None:
+            self.gui.notify_event(event)
+        else:
+            self.parent.notify_event(event)
 
     def get_super_pos(self):
         if self.parent:
@@ -430,10 +438,10 @@ class Toggle(GuiElement):
         self.text = kwargs.get('text', "toggle")
         self.render_surf(self.text)
     
-    def handle_pygame_event(self, event):
-        super().handle_pygame_event(event)
+    def handle_event(self, message: Message) -> None:
+        super().handle_event(message)
         if self.selected:
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if message.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
                 self.value = not self.value
 
     def get_values(self):
@@ -592,13 +600,15 @@ class ImageToggle(GuiElement):
         if surf is not None:
             self.set_image(surf)
     
-    def handle_pygame_event(self, event):
-        super().handle_pygame_event(event)
+    def handle_event(self, message: Message) -> None:
+        super().handle_event(message)
+        event = message.event
+        extra = message.extra
         if self.selected:
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
                 self.value = not self.value
                 if self.generate_event:
-                    self.gui.notify_event(self.key)
+                    self.parent.notify_event(self.key)
 
     def set_image(self, surf: pygame.Surface, rect=None, background=None):
         if rect is None:
@@ -823,6 +833,20 @@ class LoadBar(GuiElement):
         else:
             pygame.draw.rect(win, TEXT_ELEMENT_COLOR, (button_pos + Vector2(self.size[0] - size[0], 0), size), 2)
             pygame.draw.rect(win, self.bar_color, (button_pos + Vector2(self.size[0] - size[0] + 2, 2), size - Vector2(4,4)))
+
+
+class RadioConatiner(StackPanel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def notify_event(self, event):
+        super().notify_event(event)
+        for element in self.elements:
+            if element.key == event:
+                continue
+            element.value = False
+    
+
 
 
 class AnimatorBase:

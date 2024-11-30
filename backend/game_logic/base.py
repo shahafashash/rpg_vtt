@@ -6,8 +6,6 @@ from backend.settings.settings import SettingsManager, GameSettings
 import backend.custom_events as CustomPyGameEvents
 
 from canvas import Canvas
-from map_entities import Map
-
 
 class GameLogic(mp.Process):
     def __init__(self, name: str, message_queue: EventQueue) -> None:
@@ -21,7 +19,6 @@ class GameLogic(mp.Process):
 
         self._settings: GameSettings = None
         self._canvas: Canvas = None
-        self._map: Map = None
 
     def _initialize_window(self, title: str) -> pg.Surface:
         resolution_settings = self._settings.resolution
@@ -40,7 +37,6 @@ class GameLogic(mp.Process):
         self._settings: GameSettings = settings_manager.settings
         self._clock = pg.time.Clock()
         self._canvas = Canvas()
-        self._map = Map(self._canvas)
         self._win = self._initialize_window(self._name)
         pg.init()
 
@@ -61,11 +57,9 @@ class GameLogic(mp.Process):
         if event.type == pg.QUIT:
             self._stop_event.set()
         elif event.type == CustomPyGameEvents.CHANGE_MAP_SPECIFIC:
-            self._map.set_map_image(f'assets/maps/{extra["map"]}')
-        # elif event.type == CustomPyGameEvents.ADD_TOKEN:
-        #     self._map_manager.add_token(extra["file"], extra["pos"])
+            self._canvas.set_map_image(f'assets/maps/{extra["map"]}')
 
-        self._map.handle_event(message)
+
         self._canvas.handle_event(message)
 
     def _handle_messages(self, messages: list[Message]) -> None:
@@ -75,7 +69,7 @@ class GameLogic(mp.Process):
             self._post_message_handle_hook(message)
 
     def draw(self) -> None:
-        self._map.draw(self._win)
+        self._canvas.draw(self._win)
 
     def run(self) -> None:
         self._initialize()

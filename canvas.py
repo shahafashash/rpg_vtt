@@ -3,104 +3,84 @@ from typing import List
 
 import pygame
 from pygame import Vector2
+
+from common import MapInteractiveState
 import backend.custom_events as CustomPyGameEvents
 from backend.models import Message
-
-
-class MapEntity:
-    def __init__(self, canvas: Canvas):
-        self.pos = Vector2()
-        self.scale = 1.0
-
-        self.draggable = False
-        self.scaleable = False
-        self.selectable = False
-        self.selected = False
-
-        self.is_dragging = False
-        self.mouse_world_to_self = Vector2()
-        self.canvas = canvas
-
-    def handle_event(self, message: Message):
-        event = message.event
-        extra = message.extra
-
-        if self.selected:
-            # drag
-            if self.draggable:
-                if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
-                    self.is_dragging = True
-                    mouse_in_world = (Vector2(extra['pos']) - self.canvas.cam) / self.canvas.scale
-                    self.mouse_world_to_self = self.pos - mouse_in_world
-
-                if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_UP:
-                    self.is_dragging = False
-
-                if event.type == pygame.MOUSEMOTION and self.is_dragging:
-                    mouse_in_world = (Vector2(extra['pos']) - self.canvas.cam) / self.canvas.scale
-                    self.pos = mouse_in_world + self.mouse_world_to_self
-
-            # scale
-            if self.scaleable:
-                if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
-                    scale_value = 1.1 if event.type == CustomPyGameEvents.WHEEL_PRESS_UP else 0.9
-                    self.scale *= scale_value
-                    self.update_scale()
-
-        # check for selection
-        if event.type == pygame.MOUSEMOTION:
-            if self.selectable:
-                self.check_if_selected(extra['pos'])
-
-    def check_if_selected(self, mouse_pos: Vector2) -> None:
-        ...
-
-    def update_scale(self) -> None:
-        ...
-
-    def update_canvas_scale(self, win: pygame.Surface) -> None:
-        ...
-
+from map_entities import Transformation, MapEntity, Map, Token
 
 
 class Canvas:
     def __init__(self):
-        self.cam = Vector2()
-        self.scale = 1.0
+        self.transform = Transformation()
 
         self._is_dragging = False
         self._mouse_to_cam: Vector2 = None
-        self.entities: List[MapEntity] = []
 
-    def register_map_entity(self, entity: MapEntity) -> None:
-        self.entities.append(entity)
+        self.map = Map()
+        self.tokens: List[Token] = []
+
+        self.entities: List[MapEntity] = [self.map]
+
+        self.events: List[Message] = []
+        self.state = MapInteractiveState.EDIT_WORLD
+
+    def add_token(self, image_path) -> None:
+        print('add_token')
+
+    def insert_event(self, message: Message) -> None:
+        self.events.append(message)
 
     def handle_event(self, message: Message) -> None:
+        while len(self.events) > 0:
+            event_from_que = self.events.pop()
+            self.handle_event(event_from_que)
+
         event = message.event
         extra = message.extra
-
-        if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
+        
+        if event.type == CustomPyGameEvents.CANVAS_SWITCH_MODE_WORLD:
+            self.state = MapInteractiveState.EDIT_WORLD
+        elif event.type == CustomPyGameEvents.CANVAS_SWITCH_MODE_GRID:
+            self.state = MapInteractiveState.EDIT_GRID
+        elif event.type == CustomPyGameEvents.CANVAS_SWITCH_MODE_TOKENS:
+            self.state = MapInteractiveState.EDIT_TOKENS
+        
+        if self.state == MapInteractiveState.EDIT_WORLD:
+            if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
                 scale_value = 1.1 if event.type == CustomPyGameEvents.WHEEL_PRESS_UP else 0.9
                 mouse_pos = Vector2(extra['pos'])
-                mouse_to_cam = (self.cam - mouse_pos) * scale_value
+                mouse_to_cam = (self.transform.pos - mouse_pos) * scale_value
 
-                self.cam = mouse_pos + mouse_to_cam
-                self.scale *= scale_value
+                self.transform.pos = mouse_pos + mouse_to_cam
+                self.transform.scale *= scale_value
                 for entity in self.entities:
-                    entity.update_canvas_scale(self)
+                    entity.on_canvas_scale_update(self.transform)
 
-        elif event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
-            self._is_dragging = True
-            self._mouse_to_cam = self.cam - Vector2(extra['pos'])
+            elif event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
+                self._is_dragging = True
+                self._mouse_to_cam = self.transform.pos - Vector2(extra['pos'])
 
-        elif event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_UP:
-            self._is_dragging = False
+            elif event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_UP:
+                self._is_dragging = False
 
-        elif event.type == pygame.MOUSEMOTION:
-            if self._is_dragging:
-                mouse_pos = Vector2(event.pos)
-                self.cam = mouse_pos + self._mouse_to_cam
+            elif event.type == pygame.MOUSEMOTION:
+                if self._is_dragging:
+                    mouse_pos = Vector2(event.pos)
+                    self.transform.pos = mouse_pos + self._mouse_to_cam
+
 
     def mouse_in_world(self, mouse_in_win: Vector2) -> Vector2:
-        mouse_in_world = (Vector2(mouse_in_win) - self.cam) / self.scale
+        mouse_in_world = (Vector2(mouse_in_win) - self.transform.pos) / self.transform.scale
         return mouse_in_world
+
+    def set_map_image(self, image_path) -> None:
+        self.map.set_map_image(image_path)
+
+    def step(self) -> None:
+        for entity in self.entities:
+            entity.step()
+
+    def draw(self, win: pygame.Surface) -> None:
+        for entity in self.entities:
+            entity.draw(win, self.transform)

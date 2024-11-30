@@ -2,7 +2,6 @@ fastapi==0.115.5
 multiprocess==0.70.17
 pydantic==2.9.2
 pygame==2.5.2
-PyPDF2==3.0.1
 screeninfo==0.8.1
 uvicorn==0.32.0
 websockets==12.0

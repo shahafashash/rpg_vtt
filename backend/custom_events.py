@@ -25,3 +25,7 @@ WHEEL_PRESS_DOWN: int = pg.USEREVENT + counter.__next__()
 WHEEL_PRESS_UP: int = pg.USEREVENT + counter.__next__()
 WHEEL_RELEASE_DOWN: int = pg.USEREVENT + counter.__next__()
 WHEEL_RELEASE_UP: int = pg.USEREVENT + counter.__next__()
+
+CANVAS_SWITCH_MODE_WORLD: int = pg.USEREVENT + counter.__next__()
+CANVAS_SWITCH_MODE_GRID: int = pg.USEREVENT + counter.__next__()
+CANVAS_SWITCH_MODE_TOKENS: int = pg.USEREVENT + counter.__next__()
