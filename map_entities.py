@@ -56,17 +56,17 @@ class MapEntity:
                 if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
                     scale_value = 1.1 if event.type == CustomPyGameEvents.WHEEL_PRESS_UP else 0.9
                     self.scale *= scale_value
-                    self.update_scale()
+                    self.update_scale(transformations)
 
         # check for selection
         if event.type == pygame.MOUSEMOTION:
             if self.selectable:
-                self.check_if_selected(extra['pos'])
+                self.check_if_selected(extra['pos'], transformations)
 
-    def check_if_selected(self, mouse_pos: Vector2) -> None:
+    def check_if_selected(self, mouse_pos: Vector2, transform: Transformation) -> None:
         ...
 
-    def update_scale(self) -> None:
+    def update_scale(self, transformations: Transformation) -> None:
         ...
 
     def on_canvas_scale_update(self, transform: Transformation) -> None:
@@ -116,15 +116,15 @@ class Grid(MapEntity):
         super().on_canvas_scale_update(transform)
         self.size = self.initial_size * transform.scale * self.scale
 
-    def update_scale(self):
-        super().update_scale()
-        self.size = self.initial_size * self.canvas.scale * self.scale
+    def update_scale(self, transformations: Transformation):
+        super().update_scale(transformations)
+        self.size = self.initial_size * transformations.scale * self.scale
 
-    def check_if_selected(self, mouse_pos: Vector2) -> None:
+    def check_if_selected(self, mouse_pos: Vector2, transform: Transformation) -> None:
         self.selected = True
 
-    def draw(self, win: pygame.Surface) -> None:
-        pos = self.canvas.cam + self.pos * self.canvas.scale
+    def draw(self, win: pygame.Surface, transform: Transformation) -> None:
+        pos = transform.pos + self.pos * transform.scale
         if self.grid_type == GridType.SQUARE:
             draw_grid_square(win, pos, self.size)
 
@@ -133,7 +133,7 @@ class Grid(MapEntity):
 class Token(MapEntity):
     def __init__(self, pos: Vector2, image_path: str):
         super().__init__()
-        self.pos = pos
+        self.pos = Vector2(pos)
 
         self.surf_initial: pygame.Surface = pygame.image.load(image_path)
         self.surf: pygame.Surface = self.surf_initial
@@ -146,18 +146,18 @@ class Token(MapEntity):
         super().on_canvas_scale_update(transform)
         self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * transform.scale)
 
-    def update_scale(self) -> None:
-        super().update_scale()
-        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * canvas.scale)
+    def update_scale(self, transformations: Transformation):
+        super().update_scale(transformations)
+        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * transformations.scale)
 
-    def check_if_selected(self, mouse_pos: Vector2) -> None:
+    def check_if_selected(self, mouse_pos: Vector2, transform: Transformation) -> None:
         self.selected = False
-        pos = self.canvas.cam + self.pos * self.canvas.scale
+        pos = transform.pos + self.pos * transform.scale
         if pos.distance_to(mouse_pos) < self.surf.get_size()[0] / 2:
             self.selected = True
 
-    def draw(self, win: pygame.Surface) -> None:
-        pos = self.canvas.cam + self.pos * self.canvas.scale
+    def draw(self, win: pygame.Surface, transform: Transformation) -> None:
+        pos = transform.pos + self.pos * transform.scale
         win.blit(self.surf, pos - Vector2(self.surf.get_size()) / 2)
         if self.selected:
             pygame.draw.circle(win, (255, 255, 255), pos, self.surf.get_size()[0] // 2, 1)

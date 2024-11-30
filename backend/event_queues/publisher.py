@@ -19,6 +19,7 @@ class PublisherEventQueue(EventQueue):
             if event.type == pg.DROPFILE:
                 extra = {"file": event.file, "pos": pg.mouse.get_pos()}
                 event = PyGameEvent(CustomPyGameEvents.ADD_TOKEN)
+            
             elif event.type == pg.MOUSEBUTTONDOWN:
                 extra = {"pos": pg.mouse.get_pos()}
                 if event.button == 1:
@@ -44,6 +45,9 @@ class PublisherEventQueue(EventQueue):
                     event = PyGameEvent(CustomPyGameEvents.WHEEL_RELEASE_UP)
                 elif event.button == 5:
                     event = PyGameEvent(CustomPyGameEvents.WHEEL_RELEASE_DOWN)
+
+            elif event.type == pg.MOUSEMOTION:
+                extra = {"pos": pg.mouse.get_pos()}
 
             messages.append(Message(event=event, extra=extra))
 

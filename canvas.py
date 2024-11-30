@@ -7,7 +7,7 @@ from pygame import Vector2
 from common import MapInteractiveState
 import backend.custom_events as CustomPyGameEvents
 from backend.models import Message
-from map_entities import Transformation, MapEntity, Map, Token
+from map_entities import Transformation, MapEntity, Map, Grid, Token
 
 
 class Canvas:
@@ -18,15 +18,18 @@ class Canvas:
         self._mouse_to_cam: Vector2 = None
 
         self.map = Map()
+        self.grid = Grid()
         self.tokens: List[Token] = []
 
-        self.entities: List[MapEntity] = [self.map]
+        self.entities: List[MapEntity] = [self.map, self.grid]
 
         self.events: List[Message] = []
         self.state = MapInteractiveState.EDIT_WORLD
 
-    def add_token(self, image_path) -> None:
-        print('add_token')
+    def add_token(self, image_path: str, pos: Vector2) -> None:
+        token = Token(pos, image_path)
+        self.entities.append(token)
+        self.tokens.append(token)
 
     def insert_event(self, message: Message) -> None:
         self.events.append(message)
@@ -45,7 +48,11 @@ class Canvas:
             self.state = MapInteractiveState.EDIT_GRID
         elif event.type == CustomPyGameEvents.CANVAS_SWITCH_MODE_TOKENS:
             self.state = MapInteractiveState.EDIT_TOKENS
-        
+
+        elif event.type == CustomPyGameEvents.ADD_TOKEN:
+            self.add_token(extra['file'], extra['pos'])
+
+
         if self.state == MapInteractiveState.EDIT_WORLD:
             if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
                 scale_value = 1.1 if event.type == CustomPyGameEvents.WHEEL_PRESS_UP else 0.9
@@ -68,6 +75,13 @@ class Canvas:
                 if self._is_dragging:
                     mouse_pos = Vector2(event.pos)
                     self.transform.pos = mouse_pos + self._mouse_to_cam
+        
+        elif self.state == MapInteractiveState.EDIT_GRID:
+            self.grid.handle_event(message, self.transform)
+        
+        elif self.state == MapInteractiveState.EDIT_TOKENS:
+            for token in self.tokens:
+                token.handle_event(message, self.transform)
 
 
     def mouse_in_world(self, mouse_in_win: Vector2) -> Vector2:
