@@ -1,7 +1,10 @@
 
+import json
+
 import pygame
 from pygame.math import Vector2
 
+from common import CanvasModel
 from canvas import Canvas
 
 from backend.event_queues import PublisherEventQueue
@@ -25,7 +28,7 @@ if __name__ == "__main__":
     canvas = Canvas()
     canvas.set_map_image(r'./assets/maps/image_31.jfif')
 
-    gui = CanvasGui(canvas)
+    gui = CanvasGui(canvas, (width, height))
 
 
     done = False
@@ -41,7 +44,17 @@ if __name__ == "__main__":
 
             gui.handle_event(message)
             canvas.handle_event(message)
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+                model = canvas.get_current_state()
+                with open('canvas_save.json', "w") as f:
+                    json.dump(model.model_dump(), f, indent=4)
             
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+                with open('canvas_save.json', 'r') as f:
+                    data = f.read()
+                model = CanvasModel.model_validate_json(data)
+                canvas.load_state(model)
 
         # step
         canvas.step()

@@ -1,22 +1,24 @@
 from typing import List
 import os
 from random import choice
+from dataclasses import dataclass
 
 import pygame
 from pygame.math import Vector2
+from pydantic import BaseModel
 
-from common import MapInteractiveState, GridType
+from common import MapInteractiveState, GridType, MapModel, GridModel, TokenModel
 from drawing_utils import draw_grid_hex, draw_grid_square
 import backend.custom_events as CustomPyGameEvents
 from backend.models import Message
 
 from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL
-from dataclasses import dataclass
 
 @dataclass
 class Transformation:
     pos = Vector2()
     scale = 1.0
+
 
 
 class MapEntity:
@@ -32,7 +34,7 @@ class MapEntity:
         self.is_dragging = False
         self.mouse_world_to_self = Vector2()
 
-    def handle_event(self, message: Message, transformations: Transformation):
+    def handle_event(self, message: Message, transform: Transformation):
         event = message.event
         extra = message.extra
 
@@ -41,14 +43,14 @@ class MapEntity:
             if self.draggable:
                 if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_DOWN:
                     self.is_dragging = True
-                    mouse_in_world = (Vector2(extra['pos']) - transformations.pos) / transformations.scale
+                    mouse_in_world = (Vector2(extra['pos']) - transform.pos) / transform.scale
                     self.mouse_world_to_self = self.pos - mouse_in_world
 
                 if event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_UP:
                     self.is_dragging = False
 
                 if event.type == pygame.MOUSEMOTION and self.is_dragging:
-                    mouse_in_world = (Vector2(extra['pos']) - transformations.pos) / transformations.scale
+                    mouse_in_world = (Vector2(extra['pos']) - transform.pos) / transform.scale
                     self.pos = mouse_in_world + self.mouse_world_to_self
 
             # scale
@@ -56,17 +58,17 @@ class MapEntity:
                 if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
                     scale_value = 1.1 if event.type == CustomPyGameEvents.WHEEL_PRESS_UP else 0.9
                     self.scale *= scale_value
-                    self.update_scale(transformations)
+                    self.update_scale(transform)
 
         # check for selection
         if event.type == pygame.MOUSEMOTION:
             if self.selectable:
-                self.check_if_selected(extra['pos'], transformations)
+                self.check_if_selected(extra['pos'], transform)
 
     def check_if_selected(self, mouse_pos: Vector2, transform: Transformation) -> None:
         ...
 
-    def update_scale(self, transformations: Transformation) -> None:
+    def update_scale(self, transform: Transformation) -> None:
         ...
 
     def on_canvas_scale_update(self, transform: Transformation) -> None:
@@ -77,18 +79,25 @@ class MapEntity:
 
     def draw(self, win: pygame.Surface, transform: Transformation) -> None:
         ...
-
+    
+    def get_current_state(self) -> BaseModel:
+        ...
+    
+    def load_state(self, model: BaseModel):
+        ...
 
 
 
 class Map(MapEntity):
     def __init__(self):
+        self.path: str = None
         self.surf_initial: pygame.Surface = None
         self.surf: pygame.Surface = None
 
-    def set_map_image(self, path: str):
+    def set_map_image(self, path: str, transform: Transformation):
+        self.path = path
         self.surf_initial = pygame.image.load(path)
-        self.surf = self.surf_initial
+        self.on_canvas_scale_update(transform)
 
     def on_canvas_scale_update(self, transform: Transformation) -> None:
         super().on_canvas_scale_update(transform)
@@ -98,6 +107,13 @@ class Map(MapEntity):
         if self.surf is None:
             return
         win.blit(self.surf, transform.pos)
+    
+    def get_current_state(self) -> MapModel:
+        return MapModel(path=self.path)
+
+    def load_state(self, model: MapModel):
+        self.path = model.path
+        self.set_map_image(self.path, Transformation())
 
 
 
@@ -116,9 +132,9 @@ class Grid(MapEntity):
         super().on_canvas_scale_update(transform)
         self.size = self.initial_size * transform.scale * self.scale
 
-    def update_scale(self, transformations: Transformation):
-        super().update_scale(transformations)
-        self.size = self.initial_size * transformations.scale * self.scale
+    def update_scale(self, transform: Transformation):
+        super().update_scale(transform)
+        self.size = self.initial_size * transform.scale * self.scale
 
     def check_if_selected(self, mouse_pos: Vector2, transform: Transformation) -> None:
         self.selected = True
@@ -128,15 +144,30 @@ class Grid(MapEntity):
         if self.grid_type == GridType.SQUARE:
             draw_grid_square(win, pos, self.size)
 
+    def get_current_state(self):
+        return GridModel(grid_type=self.grid_type,
+                         size=self.size,
+                         pos=self.pos,
+                         scale=self.scale)
+
+    def load_state(self, model: GridModel):
+        self.pos = Vector2(model.pos)
+        self.scale = model.scale
+        self.size = model.size
+        self.grid_type = GridType(model.grid_type)
 
 
 class Token(MapEntity):
-    def __init__(self, pos: Vector2, image_path: str):
+    _init_scale = 1.0
+    def __init__(self, pos: Vector2, image_path: str, transform: Transformation):
         super().__init__()
+        self.path = image_path
         self.pos = Vector2(pos)
 
+        self.scale = Token._init_scale
         self.surf_initial: pygame.Surface = pygame.image.load(image_path)
-        self.surf: pygame.Surface = self.surf_initial
+        self.pos /= transform.scale
+        self.update_scale(transform)
 
         self.selectable = True
         self.scaleable = True
@@ -144,11 +175,12 @@ class Token(MapEntity):
 
     def on_canvas_scale_update(self, transform) -> None:
         super().on_canvas_scale_update(transform)
-        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * transform.scale)
+        self.update_scale(transform)
 
-    def update_scale(self, transformations: Transformation):
-        super().update_scale(transformations)
-        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * transformations.scale)
+    def update_scale(self, transform: Transformation):
+        super().update_scale(transform)
+        Token._init_scale = self.scale
+        self.surf = pygame.transform.smoothscale_by(self.surf_initial, self.scale * transform.scale)
 
     def check_if_selected(self, mouse_pos: Vector2, transform: Transformation) -> None:
         self.selected = False
@@ -161,6 +193,18 @@ class Token(MapEntity):
         win.blit(self.surf, pos - Vector2(self.surf.get_size()) / 2)
         if self.selected:
             pygame.draw.circle(win, (255, 255, 255), pos, self.surf.get_size()[0] // 2, 1)
+    
+    def get_current_state(self):
+        return TokenModel(path=self.path,
+                          pos=self.pos,
+                          scale=self.scale)
+
+    @classmethod
+    def from_model(cls, model: TokenModel):
+        obj = cls((0,0), model.path, Transformation())
+        obj.pos = Vector2(model.pos)
+        obj.scale = model.scale
+        return obj
 
 
 def handel_gui_events(gui: Gui, state: MapInteractiveState) -> MapInteractiveState:
@@ -187,87 +231,3 @@ def handel_gui_events(gui: Gui, state: MapInteractiveState) -> MapInteractiveSta
     return output
 
 
-if __name__ == "__main__":
-    pygame.init()
-
-    fps = 60
-    fpsClock = pygame.time.Clock()
-
-    width, height = 1280, 720
-    win = pygame.display.set_mode((width, height))
-
-    canvas = Canvas()
-    state = MapInteractiveState.EDIT_WORLD
-
-    map = Map(canvas)
-    canvas.register_map_entity(map)
-    maps = os.listdir(r"./assets/yuvalPdf/pics")
-    map.set_map_image(os.path.join(r"./assets/yuvalPdf/pics", choice(maps)))
-
-    grid = Grid(canvas)
-    canvas.register_map_entity(grid)
-
-    tokens: List[Token] = []
-
-    # create menu
-    icons_path = r'assets/icons.png'
-    icons_surf = pygame.image.load(icons_path).convert_alpha()
-    icons = [pygame.Surface((64, 64), pygame.SRCALPHA) for i in range(3)]
-    [icon.blit(icons_surf, (0, 0), (i * 64, 0, 64, 64)) for i, icon in enumerate(icons)]
-
-    gui = Gui()
-    tool_bar_menu = StackPanel(orientation=HORIZONTAL, size=Vector2(64 * 3, 64), pos=Vector2(width // 2 - (3 * 64) // 2, height - 64))
-    tool_bar_menu.insert(ImageToggle(key='map_tool', value=True, surf=icons[0], generate_event=True))
-    tool_bar_menu.insert(ImageToggle(key='grid_tool', surf=icons[1], generate_event=True))
-    tool_bar_menu.insert(ImageToggle(key='token_tool', surf=icons[2], generate_event=True))
-    gui.insert(tool_bar_menu)
-
-    done = False
-    while not done:
-        win.fill((0, 0, 0))
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_TAB:
-                    pass
-                    # map_manager.cycle_state()
-
-            if event.type == pygame.DROPFILE:
-                file = event.file
-                pos = canvas.mouse_in_world(pygame.mouse.get_pos())
-
-                new_token = Token(canvas, pos, file)
-                canvas.register_map_entity(new_token)
-                tokens.append(new_token)
-
-                # map_manager.add_token(file, pygame.mouse.get_pos())
-
-            if state == MapInteractiveState.EDIT_WORLD:
-                canvas.handle_event(event)
-            elif state == MapInteractiveState.EDIT_TOKENS:
-                for token in tokens:
-                    token.handle_event(event)
-            elif state == MapInteractiveState.EDIT_GRID:
-                grid.handle_event(event)
-
-            gui.handle_pygame_event(event)
-
-        # step
-        gui.step()
-        state = handel_gui_events(gui, state)
-
-
-        # draw
-        map.draw(win)
-        grid.draw(win)
-        for token in tokens:
-            token.draw(win)
-
-        gui.draw(win)
-
-        pygame.display.flip()
-        fpsClock.tick(fps)
-
-    pygame.quit()

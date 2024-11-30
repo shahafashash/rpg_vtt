@@ -4,7 +4,7 @@ from typing import List
 import pygame
 from pygame import Vector2
 
-from common import MapInteractiveState
+from common import MapInteractiveState, CanvasModel, MapModel, GridModel, TokenModel
 import backend.custom_events as CustomPyGameEvents
 from backend.models import Message
 from map_entities import Transformation, MapEntity, Map, Grid, Token
@@ -27,7 +27,7 @@ class Canvas:
         self.state = MapInteractiveState.EDIT_WORLD
 
     def add_token(self, image_path: str, pos: Vector2) -> None:
-        token = Token(pos, image_path)
+        token = Token(Vector2(pos) - self.transform.pos, image_path, self.transform)
         self.entities.append(token)
         self.tokens.append(token)
 
@@ -51,7 +51,6 @@ class Canvas:
 
         elif event.type == CustomPyGameEvents.ADD_TOKEN:
             self.add_token(extra['file'], extra['pos'])
-
 
         if self.state == MapInteractiveState.EDIT_WORLD:
             if event.type in (CustomPyGameEvents.WHEEL_PRESS_DOWN, CustomPyGameEvents.WHEEL_PRESS_UP):
@@ -89,7 +88,7 @@ class Canvas:
         return mouse_in_world
 
     def set_map_image(self, image_path) -> None:
-        self.map.set_map_image(image_path)
+        self.map.set_map_image(image_path, self.transform)
 
     def step(self) -> None:
         for entity in self.entities:
@@ -98,3 +97,27 @@ class Canvas:
     def draw(self, win: pygame.Surface) -> None:
         for entity in self.entities:
             entity.draw(win, self.transform)
+    
+    def get_current_state(self) -> CanvasModel:
+        tokens = tuple([t.get_current_state() for t in self.tokens])
+        return CanvasModel(pos=self.transform.pos,
+                           scale=self.transform.scale,
+                           map=self.map.get_current_state(),
+                           grid=self.grid.get_current_state(),
+                           tokens=tokens)
+    
+    def load_state(self, model: CanvasModel) -> None:
+        self.transform.pos = model.pos
+        self.transform.scale = model.scale
+        self.map.load_state(model.map)
+        self.grid.load_state(model.grid)
+        
+        for token in self.tokens:
+            self.entities.remove(token)
+        self.tokens.clear()
+
+        for token in model.tokens:
+            new_token = Token.from_model(token)
+            self.tokens.append(new_token)
+            self.entities.append(new_token)
+            new_token.update_scale(self.transform)

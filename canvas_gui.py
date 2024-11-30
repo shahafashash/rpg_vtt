@@ -8,7 +8,7 @@ from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL, RadioConatiner
 from canvas import Canvas
 
 class CanvasGui(Gui):
-    def __init__(self, canvas: Canvas):
+    def __init__(self, canvas: Canvas, size: tuple[int, int]):
         super().__init__()
         self.canvas = canvas
 
@@ -21,7 +21,7 @@ class CanvasGui(Gui):
         grid_key = Message(event=PyGameEvent(CustomPyGameEvents.CANVAS_SWITCH_MODE_GRID))
         token_key = Message(event=PyGameEvent(CustomPyGameEvents.CANVAS_SWITCH_MODE_TOKENS))
 
-        tool_bar_menu = RadioConatiner(orientation=HORIZONTAL, size=Vector2(64 * 3, 64), pos=Vector2(1024 // 2 - (3 * 64) // 2, 0))
+        tool_bar_menu = RadioConatiner(orientation=HORIZONTAL, size=Vector2(64 * 3, 64), pos=Vector2(size[0] // 2 - (3 * 64) // 2, 0))
         tool_bar_menu.insert(ImageToggle(key=map_key, value=True, surf=icons[0], generate_event=True))
         tool_bar_menu.insert(ImageToggle(key=grid_key, surf=icons[1], generate_event=True))
         tool_bar_menu.insert(ImageToggle(key=token_key, surf=icons[2], generate_event=True))

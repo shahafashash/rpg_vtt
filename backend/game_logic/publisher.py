@@ -17,7 +17,7 @@ class PublisherGameLogic(GameLogic):
             target=self._publisher.start, daemon=True
         )
 
-        self._gui = CanvasGui()
+        self._gui = CanvasGui(self._canvas, (1024, 1080))
         
 
     def _initialize(self) -> None:
