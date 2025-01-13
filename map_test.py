@@ -8,11 +8,13 @@ from common import CanvasModel
 from canvas import Canvas
 
 from backend.event_queues import PublisherEventQueue
+import menu_gui
 from canvas_gui import CanvasGui
 
 
 if __name__ == "__main__":
     pygame.init()
+    menu_gui.init()
 
     # pygame initializations
     message_queue = PublisherEventQueue()

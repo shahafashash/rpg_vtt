@@ -1,11 +1,20 @@
+
+from itertools import count
+
 import pygame
 from pygame.event import Event as PyGameEvent
 from pygame.math import Vector2
 
 from backend.models import Message
 import backend.custom_events as CustomPyGameEvents
-from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL, RadioConatiner
+from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL, RadioConatiner, Button
+from map_entities import Token
 from canvas import Canvas
+
+counter = count(start=1, step=1)
+EVENT_NONE = counter.__next__()
+EVENT_REMOVE_TOKEN = counter.__next__()
+
 
 class CanvasGui(Gui):
     def __init__(self, canvas: Canvas, size: tuple[int, int]):
@@ -27,8 +36,38 @@ class CanvasGui(Gui):
         tool_bar_menu.insert(ImageToggle(key=token_key, surf=icons[2], generate_event=True))
         self.insert(tool_bar_menu)
     
+    def handle_event(self, message) -> None:
+        super().handle_event(message)
+        token = self.canvas.get_context_menu_token()
+        if token is None:
+            return
+        token.context_menu_opened = False
+        self.open_token_context_menu(token)
+        
+    def open_token_context_menu(self, token: Token) -> None:
+        pos = self.canvas.transform.pos + token.pos * self.canvas.transform.scale
+
+        context_menu = StackPanel(pos=pos, size=(200, 300))
+        context_menu.insert(Button(key={'type': EVENT_REMOVE_TOKEN, 'token': token}, text='Remove Token'))
+        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button2'))
+        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button3'))
+        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button4'))
+        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button5'))
+
+        self.insert_context_menu(context_menu)
+
+
     def step(self) -> None:
         super().step()
+
+        # handle self gui events
         if len(self.event_que) > 0:
-            event = self.event_que.pop(0)
-            self.canvas.insert_event(event)
+            key = self.event_que.pop(0)
+            # print(key)
+
+            if isinstance(key, Message):
+                self.canvas.insert_event(key)
+            
+            else:
+                if key['type'] == EVENT_REMOVE_TOKEN:
+                    self.canvas.remove_token(key['token'])
