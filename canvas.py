@@ -30,6 +30,13 @@ class Canvas:
         token = Token(Vector2(pos) - self.transform.pos, image_path, self.transform)
         self.entities.append(token)
         self.tokens.append(token)
+    
+    def remove_token(self, token: Token) -> None:
+        try:
+            self.tokens.remove(token)
+            self.entities.remove(token)
+        except Exception as e:
+            print(e)
 
     def insert_event(self, message: Message) -> None:
         self.events.append(message)
@@ -98,6 +105,12 @@ class Canvas:
         for entity in self.entities:
             entity.draw(win, self.transform)
     
+    def get_context_menu_token(self) -> Token:
+        for token in self.tokens:
+            if token.context_menu_opened:
+                return token
+        return None
+
     def get_current_state(self) -> CanvasModel:
         tokens = tuple([t.get_current_state() for t in self.tokens])
         return CanvasModel(pos=self.transform.pos,

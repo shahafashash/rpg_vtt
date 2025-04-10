@@ -30,9 +30,11 @@ class MapEntity:
         self.scaleable = False
         self.selectable = False
         self.selected = False
+        self.has_context_menu = False
 
         self.is_dragging = False
         self.mouse_world_to_self = Vector2()
+        self.context_menu_opened = False
 
     def handle_event(self, message: Message, transform: Transformation):
         event = message.event
@@ -52,6 +54,9 @@ class MapEntity:
                 if event.type == pygame.MOUSEMOTION and self.is_dragging:
                     mouse_in_world = (Vector2(extra['pos']) - transform.pos) / transform.scale
                     self.pos = mouse_in_world + self.mouse_world_to_self
+
+            if self.has_context_menu and event.type == CustomPyGameEvents.RIGHT_MOUSE_CLICK_DOWN:
+                self.context_menu_opened = True
 
             # scale
             if self.scaleable:
@@ -175,6 +180,7 @@ class Token(MapEntity):
         self.selectable = True
         self.scaleable = True
         self.draggable = True
+        self.has_context_menu = True
 
     def on_canvas_scale_update(self, transform) -> None:
         super().on_canvas_scale_update(transform)

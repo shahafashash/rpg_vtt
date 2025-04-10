@@ -56,6 +56,7 @@ class Gui:
         self.toast_timer = 0
         self.toast_state = ToastState.NONE
         self.toast_pos = Vector2()
+        self.context_menu: 'GuiElement' = None
     
     def show_cursor(self, cursor, element):
         pygame.mouse.set_cursor(cursor)
@@ -99,10 +100,21 @@ class Gui:
     def handle_event(self, message: Message) -> None:
         for menu in self.menus:
             menu.handle_event(message)
+        
+        if self.context_menu is not None and message.event.type in [
+            CustomPyGameEvents.LEFT_MOUSE_CLICK_UP,
+            CustomPyGameEvents.RIGHT_MOUSE_CLICK_DOWN,
+        ]:
+            self.menus.remove(self.context_menu)
+            self.context_menu = None
 
     def insert(self, menu):
         menu.set_gui(self)
         self.menus.append(menu)
+
+    def insert_context_menu(self, menu):
+        self.insert(menu)
+        self.context_menu = menu
 
     def step(self):
         for menu in self.menus:
@@ -337,6 +349,13 @@ class Button(GuiElement):
         self.cursor = pygame.SYSTEM_CURSOR_HAND
         self.event = None
     
+    def handle_event(self, message: Message) -> None:
+        super().handle_event(message)
+        if self.selected:
+            if message.event.type == CustomPyGameEvents.LEFT_MOUSE_CLICK_UP:
+                self.event = self.key
+                self.gui.notify_event(self.event)
+
     def handle_pygame_event(self, event):
         super().handle_pygame_event(event)
         if self.selected:

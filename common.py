@@ -26,16 +26,19 @@ class GridColors(Tuple, Enum):
 class MapModel(BaseModel):
     path: str
 
+
 class GridModel(BaseModel):
     grid_type: int
     size: float
     pos: Tuple[int, int]
     scale: float
 
+
 class TokenModel(BaseModel):
     path: str
-    pos: Tuple[int, int]
+    pos: Tuple[float, float]
     scale: float
+
 
 class CanvasModel(BaseModel):
     pos: Tuple[int, int]
