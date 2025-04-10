@@ -11,14 +11,14 @@ from map_entities import Transformation, MapEntity, Map, Grid, Token
 
 
 class Canvas:
-    def __init__(self):
+    def __init__(self, draw_grid = True):
         self.transform = Transformation()
 
         self._is_dragging = False
         self._mouse_to_cam: Vector2 = None
 
         self.map = Map()
-        self.grid = Grid()
+        self.grid = Grid(draw_grid)
         self.tokens: List[Token] = []
 
         self.entities: List[MapEntity] = [self.map, self.grid]

@@ -118,7 +118,7 @@ class Map(MapEntity):
 
 
 class Grid(MapEntity):
-    def __init__(self):
+    def __init__(self, draw_grid=True):
         super().__init__()
         self.grid_type = GridType.SQUARE
         self.initial_size = 50.0
@@ -127,6 +127,9 @@ class Grid(MapEntity):
         self.selectable = True
         self.draggable = True
         self.scaleable = True
+
+        if not draw_grid:
+            self.grid_type = GridType.NONE
 
     def on_canvas_scale_update(self, transform: Transformation) -> None:
         super().on_canvas_scale_update(transform)
