@@ -101,8 +101,11 @@ class Map(MapEntity):
 
     def set_map_image(self, path: str, transform: Transformation):
         self.path = path
-        self.surf_initial = pygame.image.load(path)
-        self.on_canvas_scale_update(transform)
+        if os.path.exists(path):
+            self.surf_initial = pygame.image.load(path)
+            self.on_canvas_scale_update(transform)
+        else:
+            raise FileNotFoundError(f"Map image not found at {path}")
 
     def on_canvas_scale_update(self, transform: Transformation) -> None:
         super().on_canvas_scale_update(transform)
@@ -163,6 +166,9 @@ class Grid(MapEntity):
         self.scale = model.scale
         self.size = model.size
         self.grid_type = GridType(model.grid_type)
+
+    def set_grid_type(self, grid_type: GridType) -> None:
+        self.grid_type = grid_type
 
 
 class Token(MapEntity):

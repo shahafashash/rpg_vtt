@@ -30,7 +30,7 @@ class MapModel(BaseModel):
 class GridModel(BaseModel):
     grid_type: int
     size: float
-    pos: Tuple[int, int]
+    pos: Tuple[float, float]
     scale: float
 
 
@@ -41,7 +41,7 @@ class TokenModel(BaseModel):
 
 
 class CanvasModel(BaseModel):
-    pos: Tuple[int, int]
+    pos: Tuple[float, float]
     scale: float
 
     map: MapModel

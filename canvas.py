@@ -4,7 +4,7 @@ from typing import List
 import pygame
 from pygame import Vector2
 
-from common import MapInteractiveState, CanvasModel, MapModel, GridModel, TokenModel
+from common import MapInteractiveState, CanvasModel, MapModel, GridModel, TokenModel, GridType
 import backend.custom_events as CustomPyGameEvents
 from backend.models import Message
 from map_entities import Transformation, MapEntity, Map, Grid, Token
@@ -37,6 +37,9 @@ class Canvas:
             self.entities.remove(token)
         except Exception as e:
             print(e)
+
+    def set_grid_type(self, grid_type: GridType) -> None:
+        self.grid.set_grid_type(grid_type)
 
     def insert_event(self, message: Message) -> None:
         self.events.append(message)

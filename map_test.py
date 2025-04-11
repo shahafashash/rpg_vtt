@@ -33,11 +33,13 @@ if __name__ == "__main__":
     # canvas initializations
 
     canvas = Canvas(draw_grid=False)
-    canvas.set_map_image(r'./assets/maps/swamp.jpg')
+    try:
+        canvas.set_map_image(r'./assets/maps/swamp.jpg')
+
+    except FileNotFoundError:
+        pass
 
     gui = CanvasGui(canvas, (width, height))
-
-    
 
     done = False
     while not done:
@@ -73,7 +75,7 @@ if __name__ == "__main__":
                 root.withdraw()  # Hide the root window
                 file_path = filedialog.askopenfilename(
                     title="Select Map Image",
-                    filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")]
+                    filetypes=[("Image Files", "*.jfif;*.png;*.jpg;*.jpeg;*.bmp;*.gif")]
                 )
 
                 if file_path:
