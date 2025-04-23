@@ -7,7 +7,8 @@ from pygame import Vector2
 from common import MapInteractiveState, CanvasModel, MapModel, GridModel, TokenModel, GridType
 import backend.custom_events as CustomPyGameEvents
 from backend.models import Message
-from map_entities import Transformation, MapEntity, Map, Grid, Token
+from map_entities import Transformation, MapEntity, Map, Grid
+from token_entity import Token
 
 
 class Canvas:
@@ -91,6 +92,8 @@ class Canvas:
         elif self.state == MapInteractiveState.EDIT_TOKENS:
             for token in self.tokens:
                 token.handle_event(message, self.transform)
+                if token.selectable and token.selected:
+                    break
 
 
     def mouse_in_world(self, mouse_in_win: Vector2) -> Vector2:
@@ -111,6 +114,12 @@ class Canvas:
     def get_context_menu_token(self) -> Token:
         for token in self.tokens:
             if token.context_menu_opened:
+                return token
+        return None
+    
+    def get_selected_token(self) -> Token:
+        for token in self.tokens:
+            if token.selected:
                 return token
         return None
 

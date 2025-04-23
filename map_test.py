@@ -8,7 +8,7 @@ from tkinter import filedialog
 import pygame
 from pygame.math import Vector2
 
-from common import CanvasModel
+from common import CanvasModel, HaloFont
 from canvas import Canvas
 
 from backend.event_queues import PublisherEventQueue
@@ -29,6 +29,8 @@ if __name__ == "__main__":
 
     width, height = 1920, 1080
     win = pygame.display.set_mode((width, height))
+
+    font_decoration = HaloFont(pygame.font.SysFont('Arial', 32), 2)
 
     # canvas initializations
 
@@ -95,6 +97,22 @@ if __name__ == "__main__":
                     offset = Vector2(100, 0)
                     for i, file_path in enumerate(file_paths):
                         canvas.add_token(file_path, mouse_pos + offset * i)
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_a:
+                token = canvas.get_selected_token()
+                if token is None:
+                    continue
+                
+
+            if event.type == pygame.KEYDOWN and event.mod & pygame.KMOD_CTRL:
+                if pygame.K_0 <= event.key <= pygame.K_9:
+                    token = canvas.get_selected_token()
+                    if token is None:
+                        continue
+
+                    number_pressed = event.key - pygame.K_0
+                    token.add_decoration(font_decoration.render(str(number_pressed), True, (255, 255, 255)))
+
 
         # step
         canvas.step()

@@ -8,12 +8,13 @@ from pygame.math import Vector2
 from backend.models import Message
 import backend.custom_events as CustomPyGameEvents
 from menu_gui import Gui, ImageToggle, StackPanel, HORIZONTAL, RadioConatiner, Button
-from map_entities import Token
+from token_entity import Token
 from canvas import Canvas
 
 counter = count(start=1, step=1)
 EVENT_NONE = counter.__next__()
 EVENT_REMOVE_TOKEN = counter.__next__()
+EVENT_REMOVE_DECORATIONS = counter.__next__()
 
 
 class CanvasGui(Gui):
@@ -49,10 +50,10 @@ class CanvasGui(Gui):
 
         context_menu = StackPanel(pos=pos, size=(200, 300))
         context_menu.insert(Button(key={'type': EVENT_REMOVE_TOKEN, 'token': token}, text='Remove Token'))
-        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button2'))
-        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button3'))
-        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button4'))
-        # context_menu.insert(Button(key={'type': EVENT_NONE}, text='button5'))
+        context_menu.insert(Button(key={'type': EVENT_REMOVE_DECORATIONS, 'token': token}, text='Remove Decorations'))
+        context_menu.insert(Button(key={'type': EVENT_NONE}, text='button3'))
+        context_menu.insert(Button(key={'type': EVENT_NONE}, text='button4'))
+        context_menu.insert(Button(key={'type': EVENT_NONE}, text='button5'))
 
         self.insert_context_menu(context_menu)
 
@@ -71,3 +72,6 @@ class CanvasGui(Gui):
             else:
                 if key['type'] == EVENT_REMOVE_TOKEN:
                     self.canvas.remove_token(key['token'])
+
+                if key['type'] == EVENT_REMOVE_DECORATIONS:
+                    key['token'].decorations.clear()

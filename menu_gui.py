@@ -113,6 +113,8 @@ class Gui:
         self.menus.append(menu)
 
     def insert_context_menu(self, menu):
+        if self.context_menu is not None:
+            return
         self.insert(menu)
         self.context_menu = menu
 
