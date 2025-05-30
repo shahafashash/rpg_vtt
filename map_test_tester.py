@@ -31,7 +31,7 @@ width, height = 1920, 1080
 
 # canvas initializations
 
-canvas = Canvas(draw_grid=False)
+canvas = Canvas()
 
 
 gui = CanvasGui(canvas, (width, height))

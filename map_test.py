@@ -9,7 +9,7 @@ import pygame
 from pygame.math import Vector2
 
 from common import CanvasModel, HaloFont
-from canvas import Canvas
+from canvas import Canvas, GridType, Token
 
 from backend.event_queues import PublisherEventQueue
 import menu_gui
@@ -34,7 +34,10 @@ if __name__ == "__main__":
 
     # canvas initializations
 
-    canvas = Canvas(draw_grid=False)
+    show_grid = False
+    copied_token: Token = None
+
+    canvas = Canvas()
     try:
         canvas.set_map_image(r'./assets/maps/swamp.jpg')
 
@@ -102,9 +105,14 @@ if __name__ == "__main__":
                 token = canvas.get_selected_token()
                 if token is None:
                     continue
-                
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
+                show_grid = not show_grid
+                grid_type = GridType.NONE if not show_grid else GridType.SQUARE
+                canvas.set_grid_type(grid_type)
 
             if event.type == pygame.KEYDOWN and event.mod & pygame.KMOD_CTRL:
+                # token decorations
                 if pygame.K_0 <= event.key <= pygame.K_9:
                     token = canvas.get_selected_token()
                     if token is None:
@@ -112,6 +120,23 @@ if __name__ == "__main__":
 
                     number_pressed = event.key - pygame.K_0
                     token.add_decoration(font_decoration.render(str(number_pressed), True, (255, 255, 255)))
+            
+            if event.type == pygame.KEYDOWN and event.mod & pygame.KMOD_CTRL:
+                if event.key == pygame.K_c:
+                    token = canvas.get_selected_token()
+                    if token is None:
+                        continue
+                    copied_token = token
+                    print('copied')
+                elif event.key == pygame.K_v:
+                    if copied_token is None:
+                        continue
+                    mouse_pos = Vector2(pygame.mouse.get_pos())
+                    token_model = copied_token.get_current_state()
+                    canvas.add_token(token_model.path, mouse_pos)
+        
+
+            
 
 
         # step

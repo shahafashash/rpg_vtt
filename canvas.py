@@ -12,14 +12,14 @@ from token_entity import Token
 
 
 class Canvas:
-    def __init__(self, draw_grid = True):
+    def __init__(self):
         self.transform = Transformation()
 
         self._is_dragging = False
         self._mouse_to_cam: Vector2 = None
 
         self.map = Map()
-        self.grid = Grid(draw_grid)
+        self.grid = Grid()
         self.tokens: List[Token] = []
 
         self.entities: List[MapEntity] = [self.map, self.grid]
@@ -125,6 +125,7 @@ class Canvas:
 
     def get_current_state(self) -> CanvasModel:
         tokens = tuple([t.get_current_state() for t in self.tokens])
+        print(f'canvas: {self.transform.pos=}, {self.transform.scale=}')
         return CanvasModel(pos=self.transform.pos,
                            scale=self.transform.scale,
                            map=self.map.get_current_state(),
@@ -134,7 +135,7 @@ class Canvas:
     def load_state(self, model: CanvasModel) -> None:
         self.transform.pos = model.pos
         self.transform.scale = model.scale
-        self.map.load_state(model.map)
+        self.map.load_state(model.map, self.transform)
         self.grid.load_state(model.grid)
         
         for token in self.tokens:

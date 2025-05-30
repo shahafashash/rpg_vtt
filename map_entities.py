@@ -121,25 +121,22 @@ class Map(MapEntity):
     def get_current_state(self) -> MapModel:
         return MapModel(path=self.path)
 
-    def load_state(self, model: MapModel):
+    def load_state(self, model: MapModel, transform: Transformation):
         self.path = model.path
-        self.set_map_image(self.path, Transformation())
+        self.set_map_image(self.path, transform)
 
 
 
 class Grid(MapEntity):
-    def __init__(self, draw_grid=True):
+    def __init__(self):
         super().__init__()
-        self.grid_type = GridType.SQUARE
+        self.grid_type = GridType.NONE
         self.initial_size = 50.0
         self.size = self.initial_size
 
         self.selectable = True
         self.draggable = True
         self.scaleable = True
-
-        if not draw_grid:
-            self.grid_type = GridType.NONE
 
     def on_canvas_scale_update(self, transform: Transformation) -> None:
         super().on_canvas_scale_update(transform)
